@@ -27,15 +27,15 @@ fn bench_adf(c: &mut Criterion) {
     };
 
     c.bench_function("adf_rw_2000_aic", |b| {
-        b.iter(|| adfuller(&rw, None, Regression::C, AutoLag::Aic))
+        b.iter(|| adfuller(&rw, None, Regression::C, AutoLag::Aic).unwrap())
     });
 
     c.bench_function("adf_rw_2000_bic", |b| {
-        b.iter(|| adfuller(&rw, None, Regression::C, AutoLag::Bic))
+        b.iter(|| adfuller(&rw, None, Regression::C, AutoLag::Bic).unwrap())
     });
 
     c.bench_function("adf_rw_2000_ct_aic", |b| {
-        b.iter(|| adfuller(&rw, None, Regression::Ct, AutoLag::Aic))
+        b.iter(|| adfuller(&rw, None, Regression::Ct, AutoLag::Aic).unwrap())
     });
 }
 

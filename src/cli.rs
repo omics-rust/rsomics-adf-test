@@ -72,7 +72,8 @@ impl Cli {
             })?;
 
             let x = read_series(self.series.as_ref())?;
-            let result = adfuller(&x, self.maxlag, regression, autolag);
+            let result = adfuller(&x, self.maxlag, regression, autolag)
+                .map_err(|e| RsomicsError::InvalidInput(e.to_string()))?;
 
             Ok(Output {
                 adf_stat: result.adf_stat,

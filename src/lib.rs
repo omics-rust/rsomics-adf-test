@@ -18,7 +18,42 @@ mod ols;
 
 pub use mackinnoncrit::mackinnoncrit;
 pub use mackinnonp::mackinnonp;
-pub(crate) use ols::{ols_ssr, ols_tstat_col0};
+pub(crate) use ols::{ols_ssr, ols_tstat_col0, xtx_solve};
+
+/// Reasons `adfuller` refuses an input, mirroring the `ValueError`/`MissingDataError`
+/// cases statsmodels raises for the same inputs.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AdfError {
+    /// The series contains a NaN or infinity.
+    NonFinite,
+    /// Every element is identical (statsmodels: "Invalid input, x is constant").
+    Constant,
+    /// Too few observations for the regression component (`nobs/2 - ntrend - 1 < 0`).
+    TooShort,
+    /// A caller-supplied `maxlag` exceeds `nobs/2 - 1 - ntrend`.
+    MaxlagTooLarge { maxlag: usize, hard_max: i64 },
+}
+
+impl std::fmt::Display for AdfError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AdfError::NonFinite => write!(f, "series contains a non-finite value (NaN or inf)"),
+            AdfError::Constant => write!(f, "series is constant"),
+            AdfError::TooShort => write!(
+                f,
+                "sample size is too short to use the selected regression component"
+            ),
+            AdfError::MaxlagTooLarge { maxlag, hard_max } => {
+                write!(
+                    f,
+                    "maxlag {maxlag} exceeds nobs/2 - 1 - ntrend = {hard_max}"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for AdfError {}
 
 /// Regression specification: which deterministic terms to include.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -108,28 +143,40 @@ pub fn adfuller(
     maxlag: Option<usize>,
     regression: Regression,
     autolag: AutoLag,
-) -> AdfResult {
+) -> Result<AdfResult, AdfError> {
     let orig_nobs = x.len();
-    assert!(
-        orig_nobs >= 3,
-        "adfuller: series must have at least 3 observations"
-    );
+
+    if x.iter().any(|v| !v.is_finite()) {
+        return Err(AdfError::NonFinite);
+    }
+    if let Some(&first) = x.first() {
+        if x.iter().all(|&v| v == first) {
+            return Err(AdfError::Constant);
+        }
+    }
 
     let ntrend = regression.ntrend();
 
+    // Signed so a too-short series is caught explicitly rather than wrapping the
+    // unsigned `nobs/2 - ntrend - 1` into a huge maxlag.
+    let hard_max = orig_nobs as i64 / 2 - ntrend as i64 - 1;
     let maxlag: usize = match maxlag {
         Some(m) => {
-            let hard_max = orig_nobs / 2 - ntrend - 1;
-            assert!(
-                m <= hard_max,
-                "maxlag {m} exceeds nobs/2 - 1 - ntrend = {hard_max}"
-            );
+            if m as i64 > hard_max {
+                return Err(AdfError::MaxlagTooLarge {
+                    maxlag: m,
+                    hard_max,
+                });
+            }
             m
         }
         None => {
-            let schwert = (12.0 * (orig_nobs as f64 / 100.0).powf(0.25)).ceil() as usize;
-            let hard_max = orig_nobs / 2 - ntrend - 1;
-            schwert.min(hard_max)
+            let schwert = (12.0 * (orig_nobs as f64 / 100.0).powf(0.25)).ceil() as i64;
+            let ml = schwert.min(hard_max);
+            if ml < 0 {
+                return Err(AdfError::TooShort);
+            }
+            ml as usize
         }
     };
 
@@ -208,7 +255,7 @@ pub fn adfuller(
         let (adf_stat, nobs) = refit(x, &xdiff, maxlag, regression, orig_nobs);
         let pvalue = mackinnonp(adf_stat, regression);
         let [crit_1pct, crit_5pct, crit_10pct] = mackinnoncrit(regression, nobs);
-        return AdfResult {
+        return Ok(AdfResult {
             adf_stat,
             pvalue,
             usedlag: maxlag,
@@ -217,7 +264,7 @@ pub fn adfuller(
             crit_5pct,
             crit_10pct,
             icbest: Option::None,
-        };
+        });
     }
 
     // Autolag: iterate over column counts startlag..=startlag+maxlag.
@@ -253,7 +300,7 @@ pub fn adfuller(
     let pvalue = mackinnonp(adf_stat, regression);
     let [crit_1pct, crit_5pct, crit_10pct] = mackinnoncrit(regression, nobs);
 
-    AdfResult {
+    Ok(AdfResult {
         adf_stat,
         pvalue,
         usedlag,
@@ -262,7 +309,7 @@ pub fn adfuller(
         crit_5pct,
         crit_10pct,
         icbest: Some(icbest),
-    }
+    })
 }
 
 /// Final OLS fit, matching statsmodels:
@@ -342,7 +389,11 @@ fn refit(
     // endog: xdiff[-nobs..] = xdiff[xdiff.len()-nobs..]
     let endog = &xdiff[xdiff.len() - nobs..];
 
+    // A degenerate design that fits exactly (zero residual variance) makes the standard
+    // error zero and the t-statistic ±∞. Valid data never fits exactly, so this only
+    // touches numerically-degenerate inputs; report them as NaN rather than ±∞.
     let t0 = ols_tstat_col0(endog, &rhs, nobs, ncols);
+    let t0 = if t0.is_finite() { t0 } else { f64::NAN };
     (t0, nobs)
 }
 
@@ -401,16 +452,11 @@ fn ols_last_tstat(
     let x = DMatrix::from_row_slice(nobs, ncols, &packed);
     let xtx = x.tr_mul(&x);
     let xty = x.tr_mul(&y);
-    let beta = xtx
-        .clone()
-        .lu()
-        .solve(&xty)
-        .expect("ols_last_tstat: singular");
+    let (beta, xtx_inv) = xtx_solve(xtx, &xty);
     let resid = &y - &x * &beta;
     let ssr = resid.dot(&resid);
     let df = (nobs - ncols) as f64;
     let sigma2 = ssr / df;
-    let xtx_inv = xtx.try_inverse().expect("ols_last_tstat: not invertible");
     let last = ncols - 1;
     let se = (sigma2 * xtx_inv[(last, last)]).sqrt();
     beta[last] / se

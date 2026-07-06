@@ -40,7 +40,7 @@ fn assert_int_eq(got: usize, want: usize, label: &str) {
 
 #[test]
 fn rw_default_aic() {
-    let r = adfuller(&RW, None, Regression::C, AutoLag::Aic);
+    let r = adfuller(&RW, None, Regression::C, AutoLag::Aic).unwrap();
     assert_close(
         r.adf_stat,
         -2.3072851790645248,
@@ -72,7 +72,7 @@ fn rw_default_aic() {
 
 #[test]
 fn ar1_default_aic() {
-    let r = adfuller(&AR1, None, Regression::C, AutoLag::Aic);
+    let r = adfuller(&AR1, None, Regression::C, AutoLag::Aic).unwrap();
     assert_close(
         r.adf_stat,
         -8.4822161528455489,
@@ -111,7 +111,7 @@ fn ar1_default_aic() {
 
 #[test]
 fn wn_default_aic() {
-    let r = adfuller(&WN, None, Regression::C, AutoLag::Aic);
+    let r = adfuller(&WN, None, Regression::C, AutoLag::Aic).unwrap();
     assert_close(
         r.adf_stat,
         -13.363254849861557,
@@ -142,7 +142,7 @@ fn wn_default_aic() {
 
 #[test]
 fn rw_ct() {
-    let r = adfuller(&RW, None, Regression::Ct, AutoLag::Aic);
+    let r = adfuller(&RW, None, Regression::Ct, AutoLag::Aic).unwrap();
     assert_close(r.adf_stat, -2.0280247832558267, 1e-10, "rw_ct adf_stat");
     assert_close(r.pvalue, 0.58608840605290535, 1e-10, "rw_ct pvalue");
     assert_int_eq(r.usedlag, 0, "rw_ct usedlag");
@@ -154,7 +154,7 @@ fn rw_ct() {
 
 #[test]
 fn rw_ctt() {
-    let r = adfuller(&RW, None, Regression::Ctt, AutoLag::Aic);
+    let r = adfuller(&RW, None, Regression::Ctt, AutoLag::Aic).unwrap();
     assert_close(r.adf_stat, -3.0752185966646057, 1e-10, "rw_ctt adf_stat");
     assert_close(r.pvalue, 0.26059924836186399, 1e-10, "rw_ctt pvalue");
     assert_int_eq(r.usedlag, 0, "rw_ctt usedlag");
@@ -171,7 +171,7 @@ fn rw_ctt() {
 
 #[test]
 fn rw_n() {
-    let r = adfuller(&RW, None, Regression::N, AutoLag::Aic);
+    let r = adfuller(&RW, None, Regression::N, AutoLag::Aic).unwrap();
     assert_close(r.adf_stat, -0.45423028988011138, 1e-10, "rw_n adf_stat");
     assert_close(r.pvalue, 0.51483569705387033, 1e-10, "rw_n pvalue");
     assert_int_eq(r.usedlag, 0, "rw_n usedlag");
@@ -183,7 +183,7 @@ fn rw_n() {
 
 #[test]
 fn ar1_bic() {
-    let r = adfuller(&AR1, None, Regression::C, AutoLag::Bic);
+    let r = adfuller(&AR1, None, Regression::C, AutoLag::Bic).unwrap();
     assert_close(r.adf_stat, -8.4822161528455489, 1e-10, "ar1_bic adf_stat");
     assert_int_eq(r.usedlag, 0, "ar1_bic usedlag");
     assert_int_eq(r.nobs, 199, "ar1_bic nobs");
@@ -191,7 +191,7 @@ fn ar1_bic() {
 
 #[test]
 fn ar1_tstat() {
-    let r = adfuller(&AR1, None, Regression::C, AutoLag::TStat);
+    let r = adfuller(&AR1, None, Regression::C, AutoLag::TStat).unwrap();
     assert_close(r.adf_stat, -8.4822161528455489, 1e-10, "ar1_tstat adf_stat");
     assert_int_eq(r.usedlag, 0, "ar1_tstat usedlag");
     assert_int_eq(r.nobs, 199, "ar1_tstat nobs");
@@ -199,7 +199,7 @@ fn ar1_tstat() {
 
 #[test]
 fn ar1_nolag_maxlag4() {
-    let r = adfuller(&AR1, Some(4), Regression::C, AutoLag::None);
+    let r = adfuller(&AR1, Some(4), Regression::C, AutoLag::None).unwrap();
     assert_close(r.adf_stat, -5.6976038963908797, 1e-10, "ar1_nolag adf_stat");
     let pv_want = 7.8085792667346633e-07;
     assert!(
@@ -232,7 +232,7 @@ fn ar1_nolag_maxlag4() {
 
 #[test]
 fn rw_fixlag3() {
-    let r = adfuller(&RW, Some(3), Regression::C, AutoLag::None);
+    let r = adfuller(&RW, Some(3), Regression::C, AutoLag::None).unwrap();
     assert_close(
         r.adf_stat,
         -2.6894618247810103,
@@ -264,7 +264,7 @@ fn rw_fixlag3() {
 
 #[test]
 fn wn_ct() {
-    let r = adfuller(&WN, None, Regression::Ct, AutoLag::Aic);
+    let r = adfuller(&WN, None, Regression::Ct, AutoLag::Aic).unwrap();
     assert_close(r.adf_stat, -13.330791287329648, 1e-10, "wn_ct adf_stat");
     assert_int_eq(r.usedlag, 0, "wn_ct usedlag");
     assert_int_eq(r.nobs, 199, "wn_ct nobs");
@@ -272,7 +272,7 @@ fn wn_ct() {
 
 #[test]
 fn wn_ctt() {
-    let r = adfuller(&WN, None, Regression::Ctt, AutoLag::Aic);
+    let r = adfuller(&WN, None, Regression::Ctt, AutoLag::Aic).unwrap();
     assert_close(r.adf_stat, -13.345193582081379, 1e-10, "wn_ctt adf_stat");
     assert_int_eq(r.usedlag, 0, "wn_ctt usedlag");
     assert_int_eq(r.nobs, 199, "wn_ctt nobs");
@@ -280,15 +280,40 @@ fn wn_ctt() {
 
 #[test]
 fn wn_n() {
-    let r = adfuller(&WN, None, Regression::N, AutoLag::Aic);
+    let r = adfuller(&WN, None, Regression::N, AutoLag::Aic).unwrap();
     assert_close(r.adf_stat, -13.298222618636036, 1e-10, "wn_n adf_stat");
     assert_int_eq(r.usedlag, 0, "wn_n usedlag");
     assert_int_eq(r.nobs, 199, "wn_n nobs");
 }
 
 #[test]
+fn short_n4() {
+    // Four-observation series: exercises the minimum valid sample size (nobs=3 after
+    // differencing). Goldens from statsmodels 0.14.6 adfuller([1, 2, 3.5, 3]).
+    let r = adfuller(&[1.0, 2.0, 3.5, 3.0], None, Regression::C, AutoLag::Aic).unwrap();
+    assert_close(r.adf_stat, -1.3121597027036953, 1e-9, "short_n4 adf_stat");
+    assert_close(r.pvalue, 0.6235910366360051, 1e-9, "short_n4 pvalue");
+    assert_int_eq(r.usedlag, 0, "short_n4 usedlag");
+    assert_int_eq(r.nobs, 3, "short_n4 nobs");
+    assert_close(r.crit_1pct, -10.41719074074074, 1e-9, "short_n4 crit_1pct");
+    assert_close(r.crit_5pct, -5.77838074074074, 1e-9, "short_n4 crit_5pct");
+    assert_close(
+        r.crit_10pct,
+        -3.391681111111111,
+        1e-9,
+        "short_n4 crit_10pct",
+    );
+    assert_close(
+        r.icbest.unwrap(),
+        8.533524407475102,
+        1e-9,
+        "short_n4 icbest",
+    );
+}
+
+#[test]
 fn rw_bic() {
-    let r = adfuller(&RW, None, Regression::C, AutoLag::Bic);
+    let r = adfuller(&RW, None, Regression::C, AutoLag::Bic).unwrap();
     assert_close(r.adf_stat, -2.3072851790645248, 1e-10, "rw_bic adf_stat");
     assert_close(r.pvalue, 0.16962912078943748, 1e-10, "rw_bic pvalue");
     assert_int_eq(r.usedlag, 0, "rw_bic usedlag");
