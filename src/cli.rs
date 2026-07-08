@@ -56,6 +56,7 @@ struct Output {
 impl Cli {
     pub fn run(self) -> ExitCode {
         let common = self.common;
+        let json = common.json;
         run(&common, META, move || {
             let regression = Regression::parse(&self.regression).ok_or_else(|| {
                 RsomicsError::InvalidInput(format!(
@@ -75,7 +76,7 @@ impl Cli {
             let result = adfuller(&x, self.maxlag, regression, autolag)
                 .map_err(|e| RsomicsError::InvalidInput(e.to_string()))?;
 
-            Ok(Output {
+            let out = Output {
                 adf_stat: result.adf_stat,
                 pvalue: result.pvalue,
                 usedlag: result.usedlag,
@@ -84,7 +85,20 @@ impl Cli {
                 crit_5pct: result.crit_5pct,
                 crit_10pct: result.crit_10pct,
                 icbest: result.icbest,
-            })
+            };
+            if !json {
+                println!("adf_stat\t{}", out.adf_stat);
+                println!("pvalue\t{}", out.pvalue);
+                println!("usedlag\t{}", out.usedlag);
+                println!("nobs\t{}", out.nobs);
+                println!("crit_1pct\t{}", out.crit_1pct);
+                println!("crit_5pct\t{}", out.crit_5pct);
+                println!("crit_10pct\t{}", out.crit_10pct);
+                if let Some(ic) = out.icbest {
+                    println!("icbest\t{ic}");
+                }
+            }
+            Ok(out)
         })
     }
 }
